@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     const blocklyDiv = document.getElementById('blocklyDiv');
     const toolbox = document.getElementById('toolbox');
-    const codeOutput = document.getElementById('pythonCode');
 
     // Customizing the "Create a Function" feature to feel like "My Blocks"
     if (Blockly.Msg) {
@@ -120,6 +119,68 @@ document.addEventListener("DOMContentLoaded", function () {
             "colour": "#e67e22",
             "tooltip": "Pausa a execução do seu código pelo tempo determinado.",
             "helpUrl": ""
+        },
+        {
+            "type": "pca9685_init",
+            "message0": "Inicializar Driver PCA9685 %1 SDA: %2 SCL: %3 Freq: %4",
+            "args0": [
+                { "type": "field_dropdown", "name": "I2C_ID", "options": [["I2C 0", "0"], ["I2C 1", "1"]] },
+                { "type": "field_number", "name": "SDA", "value": 21 },
+                { "type": "field_number", "name": "SCL", "value": 22 },
+                { "type": "field_number", "name": "FREQ", "value": 50 }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "colour": "#E91E63",
+            "tooltip": "Configura o driver PCA9685 via I2C.",
+            "helpUrl": ""
+        },
+        {
+            "type": "pca9685_set_servo",
+            "message0": "PCA9685 Canal %1 para %2°",
+            "args0": [
+                { "type": "input_value", "name": "CHANNEL", "check": "Number" },
+                { "type": "input_value", "name": "ANGLE", "check": "Number" }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "colour": "#E91E63",
+            "tooltip": "Ajusta o ângulo de um servo conectado a um canal do PCA9685 (0-15).",
+            "helpUrl": ""
+        },
+        {
+            "type": "robot_arm_move",
+            "message0": "Mover Braço 🦾 Base: %1 Ombro: %2 Cotovelo: %3 Garra: %4",
+            "args0": [
+                { "type": "field_number", "name": "BASE", "value": 90, "min": 0, "max": 180 },
+                { "type": "field_number", "name": "SHOULDER", "value": 90, "min": 0, "max": 180 },
+                { "type": "field_number", "name": "ELBOW", "value": 90, "min": 0, "max": 180 },
+                { "type": "field_number", "name": "CLAW", "value": 90, "min": 0, "max": 180 }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "colour": "#673AB7",
+            "tooltip": "Controla os 4 eixos principais de um braço robótico comum.",
+            "helpUrl": ""
+        },
+        {
+            "type": "robot_dance_preset",
+            "message0": "Fazer Passo de Dança 🕺 %1 Velocidade: %2",
+            "args0": [
+                { "type": "field_dropdown", "name": "DANCE", "options": [
+                    ["Ginga", "ginga"], 
+                    ["Onda", "wave"], 
+                    ["Moonwalk", "moonwalk"], 
+                    ["Passo Lateral", "side_step"],
+                    ["Comemoração", "celebrate"]
+                ]},
+                { "type": "field_dropdown", "name": "SPEED", "options": [["Lento", "200"], ["Médio", "100"], ["Rápido", "50"]] }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "colour": "#FF5722",
+            "tooltip": "Executa uma sequência de movimentos pré-programada.",
+            "helpUrl": ""
         }
     ]);
 
@@ -213,6 +274,53 @@ document.addEventListener("DOMContentLoaded", function () {
         return `time.sleep(${seconds})\n`;
     };
 
+    pyGen.forBlock['pca9685_init'] = function (block, generator) {
+        generator.machineImports_.add('I2C');
+        generator.machineImports_.add('Pin');
+        generator.definitions_['import_pca9685'] = 'from pca9685 import PCA9685';
+        const i2c_id = block.getFieldValue('I2C_ID');
+        const sda = block.getFieldValue('SDA');
+        const scl = block.getFieldValue('SCL');
+        const freq = block.getFieldValue('FREQ');
+        return `i2c = I2C(${i2c_id}, sda=Pin(${sda}), scl=Pin(${scl}))\npca = PCA9685(i2c)\npca.freq(${freq})\n`;
+    };
+
+    pyGen.forBlock['pca9685_set_servo'] = function (block, generator) {
+        generator.definitions_['import_pca9685'] = 'from pca9685 import PCA9685';
+        const channel = generator.valueToCode(block, 'CHANNEL', generator.ORDER_ATOMIC) || '0';
+        const angle = generator.valueToCode(block, 'ANGLE', generator.ORDER_ATOMIC) || '90';
+        return `pca.servo(${channel}, ${angle})\n`;
+    };
+
+    pyGen.forBlock['robot_arm_move'] = function (block, generator) {
+        generator.definitions_['import_pca9685'] = 'from pca9685 import PCA9685';
+        const base = block.getFieldValue('BASE');
+        const shoulder = block.getFieldValue('SHOULDER');
+        const elbow = block.getFieldValue('ELBOW');
+        const claw = block.getFieldValue('CLAW');
+        // Canais padrão para o braço: 0 (Base), 1 (Ombro), 2 (Cotovelo), 3 (Garra)
+        return `pca.servo(0, ${base})\npca.servo(1, ${shoulder})\npca.servo(2, ${elbow})\npca.servo(3, ${claw})\n`;
+    };
+
+    pyGen.forBlock['robot_dance_preset'] = function (block, generator) {
+        generator.definitions_['import_pca9685'] = 'from pca9685 import PCA9685';
+        generator.definitions_['import_time'] = 'import time';
+        const dance = block.getFieldValue('DANCE');
+        const speed = block.getFieldValue('SPEED');
+        
+        let code = `# Executando passo de dança: ${dance}\n`;
+        if (dance === 'ginga') {
+            code += `for _ in range(3):\n    pca.servo(0, 70); time.sleep_ms(${speed})\n    pca.servo(0, 110); time.sleep_ms(${speed})\n`;
+        } else if (dance === 'wave') {
+            code += `for i in range(8):\n    pca.servo(i, 45); time.sleep_ms(50)\n    pca.servo(i, 135); time.sleep_ms(50)\n`;
+        } else if (dance === 'moonwalk') {
+            code += `for _ in range(5):\n    pca.servo(0, 45); pca.servo(1, 135); time.sleep_ms(${speed})\n    pca.servo(0, 135); pca.servo(1, 45); time.sleep_ms(${speed})\n`;
+        } else {
+            code += `pca.servo(0, 180); time.sleep_ms(${speed}); pca.servo(0, 0)\n`;
+        }
+        return code;
+    };
+
     // --- JavaScript Generators for Custom Blocks ---
     const jsGen = Blockly.JavaScript;
     
@@ -265,6 +373,69 @@ document.addEventListener("DOMContentLoaded", function () {
         return `await simulator.sleep(${seconds});\n`;
     };
 
+    // --- C++ (Arduino Style) Generator ---
+    const cppGen = new Blockly.Generator('C++');
+    cppGen.PRECEDENCE = 0;
+
+    cppGen.init = function (workspace) {
+        this.definitions_ = Object.create(null);
+        this.setups_ = Object.create(null);
+        this.definitions_['arduino_h'] = '#include <Arduino.h>';
+        if (!this.variableDB_) {
+            this.variableDB_ = new Blockly.Names(this.RESERVED_WORDS_);
+        } else {
+            this.variableDB_.reset();
+        }
+    };
+
+    cppGen.finish = function (code) {
+        let definitions = [];
+        for (let name in this.definitions_) definitions.push(this.definitions_[name]);
+        let setups = [];
+        for (let name in this.setups_) setups.push(this.setups_[name]);
+
+        let finalCode = definitions.join('\n') + '\n\n';
+        finalCode += 'void setup() {\n  ' + setups.join('\n  ') + '\n}\n\n';
+        finalCode += 'void loop() {\n  ' + code.replace(/\n/g, '\n  ') + '\n}';
+        return finalCode;
+    };
+
+    cppGen.scrub_ = function (block, code, opt_thisOnly) {
+        const nextBlock = block.getNextBlock();
+        const nextCode = (opt_thisOnly) ? '' : this.blockToCode(nextBlock);
+        return code + nextCode;
+    };
+
+    // Mapeamento de Blocos Customizados para C++
+    cppGen.forBlock['event_when_started'] = function (block, generator) { return ""; };
+    cppGen.forBlock['mcu_pin_setup'] = function (block, generator) {
+        const pin = block.getFieldValue('PIN');
+        const mode = block.getFieldValue('MODE').includes('OUT') ? 'OUTPUT' : (block.getFieldValue('MODE').includes('PULL_UP') ? 'INPUT_PULLUP' : 'INPUT');
+        generator.setups_['pin_mode_' + pin] = `pinMode(${pin}, ${mode});`;
+        return "";
+    };
+    cppGen.forBlock['mcu_pin_write'] = function (block, generator) {
+        const pin = block.getFieldValue('PIN');
+        const val = block.getFieldValue('VAL') === '1' ? 'HIGH' : 'LOW';
+        return `digitalWrite(${pin}, ${val});\n`;
+    };
+    cppGen.forBlock['mcu_sleep'] = function (block, generator) {
+        const seconds = block.getFieldValue('SECONDS');
+        return `delay(${seconds * 1000});\n`;
+    };
+    cppGen.forBlock['pca9685_init'] = function (block, generator) {
+        generator.definitions_['wire_h'] = '#include <Wire.h>';
+        generator.definitions_['pca_h'] = '#include <Adafruit_PWMServoDriver.h>';
+        generator.definitions_['pca_obj'] = 'Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();';
+        generator.setups_['pca_begin'] = 'pwm.begin();\npwm.setPWMFreq(50);';
+        return "";
+    };
+    cppGen.forBlock['pca9685_set_servo'] = function (block, generator) {
+        const channel = generator.valueToCode(block, 'CHANNEL', 0) || '0';
+        const angle = generator.valueToCode(block, 'ANGLE', 0) || '90';
+        return `pwm.setPWM(${channel}, 0, map(${angle}, 0, 180, 150, 600));\n`;
+    };
+
     const themeZelosDark = Blockly.Theme.defineTheme('zelosDark', {
         'base': Blockly.Themes.Zelos,
         'startHats': true,
@@ -301,7 +472,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Theme initialization
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
     const initialTheme = savedTheme === 'dark' ? themeZelosDark : themeZelosLight;
@@ -311,41 +481,61 @@ document.addEventListener("DOMContentLoaded", function () {
         scrollbars: true,
         trashcan: true,
         renderer: 'zelos',
-        grid: {
-            spacing: 25,
-            length: 3,
-            colour: '#ccc',
-            snap: true
-        },
+        grid: { spacing: 25, length: 3, colour: '#ccc', snap: true },
         theme: initialTheme
+    });
+
+    // --- CodeMirror Initialization ---
+    const cmModeMap = {
+        'python': 'python',
+        'javascript': 'javascript',
+        'cpp': 'text/x-c++src'
+    };
+
+    const cmEditor = CodeMirror(document.getElementById('code-editor'), {
+        value: "# Arraste blocos ou digite código aqui...\n",
+        mode: 'python',
+        theme: savedTheme === 'dark' ? 'material-darker' : 'default',
+        lineNumbers: true,
+        indentUnit: 4,
+        tabSize: 4,
+        indentWithTabs: false,
+        lineWrapping: false,
+        matchBrackets: true,
+        autoCloseBrackets: true
+    });
+
+    // --- Bidirectional Sync Flag ---
+    let isUserEditing = false;
+    let isSyncingFromBlocks = false;
+
+    // Detect manual edits in CodeMirror
+    cmEditor.on('change', (instance, changeObj) => {
+        if (!isSyncingFromBlocks && changeObj.origin !== 'setValue') {
+            isUserEditing = true;
+        }
     });
 
     let currentCodeLang = 'python';
 
     function updateCode() {
+        if (isUserEditing) return; // User is editing, don't overwrite
+
+        isSyncingFromBlocks = true;
         let code = '';
         if (currentCodeLang === 'python') {
             code = pyGen.workspaceToCode(workspace);
-            if (!code.trim()) {
-                code = "# Conecte blocos abaixo do 'Quando Iniciar' para gerar código...\n";
-            }
-            codeOutput.className = 'language-python';
+            if (!code.trim()) code = "# Conecte blocos ou digite código aqui...\n";
         } else if (currentCodeLang === 'javascript') {
             code = jsGen.workspaceToCode(workspace);
-            if (!code.trim()) {
-                code = "// Conecte blocos abaixo do 'Quando Iniciar' para gerar código...\n";
-            }
-            codeOutput.className = 'language-javascript';
+            if (!code.trim()) code = "// Conecte blocos ou digite código aqui...\n";
         } else if (currentCodeLang === 'cpp') {
-            code = "// Geração de código C++ em breve!\n// (Necessário adicionar o gerador customizado de C++)\n";
-            codeOutput.className = 'language-cpp';
+            code = cppGen.workspaceToCode(workspace);
+            if (!code.trim() || code.split('\n').length < 6) code = "// Conecte blocos ou digite código aqui...\n";
         }
-        
-        codeOutput.textContent = code;
-
-        if (window.Prism) {
-            Prism.highlightElement(codeOutput);
-        }
+        cmEditor.setValue(code);
+        cmEditor.setOption('mode', cmModeMap[currentCodeLang] || 'python');
+        isSyncingFromBlocks = false;
     }
 
     // Lógica das Abas de Código (Tabs)
@@ -355,11 +545,22 @@ document.addEventListener("DOMContentLoaded", function () {
             tabBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentCodeLang = btn.getAttribute('data-lang');
+            isUserEditing = false; // Reset on tab change
             updateCode();
         });
     });
 
-    workspace.addChangeListener(updateCode);
+    // When blocks change, if the user isn't editing, update the editor
+    workspace.addChangeListener((event) => {
+        if (event.type === Blockly.Events.BLOCK_MOVE ||
+            event.type === Blockly.Events.BLOCK_CHANGE ||
+            event.type === Blockly.Events.BLOCK_CREATE ||
+            event.type === Blockly.Events.BLOCK_DELETE) {
+            if (!isUserEditing) {
+                updateCode();
+            }
+        }
+    });
     updateCode();
 
     const startBlock = workspace.newBlock('event_when_started');
@@ -369,10 +570,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     window.addEventListener('resize', function () {
         Blockly.svgResize(workspace);
+        cmEditor.refresh();
     });
 
+    // --- Copy Button ---
     document.getElementById('btn-copy').addEventListener('click', () => {
-        const text = codeOutput.textContent;
+        const text = cmEditor.getValue();
         navigator.clipboard.writeText(text).then(() => {
             const btn = document.getElementById('btn-copy');
             const originalHTML = btn.innerHTML;
@@ -382,10 +585,310 @@ document.addEventListener("DOMContentLoaded", function () {
                 btn.classList.remove('success');
                 btn.innerHTML = originalHTML;
             }, 2000);
-        }).catch(err => {
-            console.error('Falha ao copiar: ', err);
         });
     });
+
+    // --- SYNC BUTTON: Code → Blocks ---
+    document.getElementById('btn-sync').addEventListener('click', () => {
+        const code = cmEditor.getValue();
+        const syncBtn = document.getElementById('btn-sync');
+        syncBtn.classList.add('syncing');
+
+        try {
+            workspace.clear();
+
+            // Always add the start block
+            const startBlk = workspace.newBlock('event_when_started');
+            startBlk.initSvg();
+            startBlk.render();
+            startBlk.moveBy(50, 50);
+
+            let parsedTree;
+            if (currentCodeLang === 'python') {
+                parsedTree = parsePythonToBlocks(code);
+            } else if (currentCodeLang === 'javascript') {
+                parsedTree = parseJSToBlocks(code);
+            } else if (currentCodeLang === 'cpp') {
+                parsedTree = parseCppToBlocks(code);
+            }
+
+            if (parsedTree && parsedTree.length > 0) {
+                buildBlockChain(startBlk, parsedTree);
+            }
+
+            isUserEditing = false;
+            syncBtn.classList.remove('syncing');
+            syncBtn.classList.add('success');
+            syncBtn.innerHTML = '<i class="fa-solid fa-check"></i> Pronto!';
+            setTimeout(() => {
+                syncBtn.classList.remove('success');
+                syncBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Sincronizar';
+            }, 2000);
+        } catch (err) {
+            console.error('Sync error:', err);
+            syncBtn.classList.remove('syncing');
+            alert('Erro ao sincronizar: ' + err.message);
+        }
+    });
+
+    // === BLOCK BUILDER (handles nesting) ===
+    function buildBlockChain(parentBlock, blockList) {
+        let lastBlock = parentBlock;
+        blockList.forEach(blockInfo => {
+            try {
+                const newBlock = workspace.newBlock(blockInfo.type);
+                for (let field in blockInfo.fields) {
+                    try { newBlock.setFieldValue(blockInfo.fields[field], field); } catch(e) {}
+                }
+
+                // Handle value inputs (like boolean TRUE for while loops)
+                if (blockInfo.values) {
+                    for (let inputName in blockInfo.values) {
+                        const valInfo = blockInfo.values[inputName];
+                        const valBlock = workspace.newBlock(valInfo.type);
+                        for (let f in valInfo.fields) {
+                            try { valBlock.setFieldValue(valInfo.fields[f], f); } catch(e) {}
+                        }
+                        valBlock.initSvg();
+                        valBlock.render();
+                        if (newBlock.getInput(inputName) && newBlock.getInput(inputName).connection) {
+                            newBlock.getInput(inputName).connection.connect(valBlock.outputConnection);
+                        }
+                    }
+                }
+
+                newBlock.initSvg();
+                newBlock.render();
+
+                // Connect to the previous block in the chain
+                if (lastBlock.nextConnection && newBlock.previousConnection) {
+                    lastBlock.nextConnection.connect(newBlock.previousConnection);
+                }
+
+                // If this block has children (e.g., loop body), build them inside
+                if (blockInfo.children && blockInfo.children.length > 0) {
+                    const doInput = newBlock.getInput('DO');
+                    if (doInput && doInput.connection) {
+                        // Create the first child and connect to the DO input
+                        let firstChild = null;
+                        let lastChild = null;
+                        blockInfo.children.forEach(childInfo => {
+                            const childBlock = workspace.newBlock(childInfo.type);
+                            for (let f in childInfo.fields) {
+                                try { childBlock.setFieldValue(childInfo.fields[f], f); } catch(e) {}
+                            }
+                            childBlock.initSvg();
+                            childBlock.render();
+                            if (!firstChild) {
+                                firstChild = childBlock;
+                                doInput.connection.connect(childBlock.previousConnection);
+                            } else {
+                                if (lastChild.nextConnection && childBlock.previousConnection) {
+                                    lastChild.nextConnection.connect(childBlock.previousConnection);
+                                }
+                            }
+                            lastChild = childBlock;
+                        });
+                    }
+                }
+
+                lastBlock = newBlock;
+            } catch(e) {
+                console.warn('Could not create block:', blockInfo.type, e);
+            }
+        });
+    }
+
+    // === REVERSE PARSERS ===
+
+    // Helper: parse a single line into a block info object
+    function parsePythonLine(line) {
+        let m;
+        if ((m = line.match(/^pin_(\d+)\s*=\s*Pin\((\d+),\s*(Pin\.\w+(?:,\s*Pin\.\w+)?)\)/)))
+            return { type: 'mcu_pin_setup', fields: { PIN: m[2], MODE: m[3] } };
+        if ((m = line.match(/^pin_(\d+)\.value\((\d)\)/)))
+            return { type: 'mcu_pin_write', fields: { PIN: m[1], VAL: m[2] } };
+        if ((m = line.match(/^time\.sleep\((\d+\.?\d*)\)/)))
+            return { type: 'mcu_sleep', fields: { SECONDS: m[1] } };
+        if ((m = line.match(/^pwm_(\d+)\s*=\s*PWM\(Pin\((\d+)\)\)/)))
+            return { type: 'mcu_pwm_setup', fields: { PIN: m[2], FREQ: '1000' } };
+        if ((m = line.match(/^pwm_(\d+)\.freq\((\d+)\)/)))
+            return null; // freq is part of setup, skip
+        if ((m = line.match(/^pwm_(\d+)\.duty\((\d+)\)/)))
+            return { type: 'mcu_pwm_duty', fields: { PIN: m[1], DUTY: m[2] } };
+        if ((m = line.match(/^servo_(\d+)\s*=\s*Servo\(Pin\((\d+)\)\)/)))
+            return { type: 'mcu_servo_setup', fields: { PIN: m[2] } };
+        if ((m = line.match(/^servo_(\d+)\.write_angle\((\d+)\)/)))
+            return { type: 'mcu_servo_move', fields: { PIN: m[1], ANGLE: m[2] } };
+        if ((m = line.match(/^i2c\s*=\s*I2C\((\d+),\s*sda=Pin\((\d+)\),\s*scl=Pin\((\d+)\)\)/)))
+            return { type: 'pca9685_init', fields: { I2C_ID: m[1], SDA: m[2], SCL: m[3], FREQ: '50' } };
+        if ((m = line.match(/^pca\s*=\s*PCA9685/))) return null; // part of init
+        if ((m = line.match(/^pca\.freq/))) return null; // part of init
+        if ((m = line.match(/^pca\.servo\((\d+),\s*(\d+)\)/)))
+            return { type: 'pca9685_set_servo', fields: {} };
+        return null;
+    }
+
+    function parsePythonToBlocks(code) {
+        const blocks = [];
+        const lines = code.split('\n');
+        let i = 0;
+        while (i < lines.length) {
+            const raw = lines[i];
+            const trimmed = raw.trim();
+            if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('from ') || trimmed.startsWith('import ')) { i++; continue; }
+
+            // Detect while True:
+            if (trimmed.match(/^while\s+True\s*:/)) {
+                const children = [];
+                i++;
+                // Collect indented lines as children
+                while (i < lines.length) {
+                    const childRaw = lines[i];
+                    if (childRaw.trim() === '' || /^\s/.test(childRaw)) {
+                        const childTrimmed = childRaw.trim();
+                        if (childTrimmed) {
+                            const childBlock = parsePythonLine(childTrimmed);
+                            if (childBlock) children.push(childBlock);
+                        }
+                        i++;
+                    } else break;
+                }
+                blocks.push({
+                    type: 'controls_whileUntil',
+                    fields: { MODE: 'WHILE' },
+                    values: { BOOL: { type: 'logic_boolean', fields: { BOOL: 'TRUE' } } },
+                    children: children
+                });
+                continue;
+            }
+
+            const block = parsePythonLine(trimmed);
+            if (block) blocks.push(block);
+            i++;
+        }
+        return blocks;
+    }
+
+    function parseJSLine(line) {
+        let m;
+        if ((m = line.match(/let\s+pin_(\d+)\s*=\s*hardware\.Pin\((\d+),\s*'([^']+)'\)/)))
+            return { type: 'mcu_pin_setup', fields: { PIN: m[2], MODE: m[3] } };
+        if ((m = line.match(/pin_(\d+)\.write\((\d)\)/)))
+            return { type: 'mcu_pin_write', fields: { PIN: m[1], VAL: m[2] } };
+        if ((m = line.match(/await\s+simulator\.sleep\((\d+\.?\d*)\)/)))
+            return { type: 'mcu_sleep', fields: { SECONDS: m[1] } };
+        if ((m = line.match(/let\s+pwm_(\d+)\s*=\s*hardware\.PWM\((\d+),\s*(\d+)\)/)))
+            return { type: 'mcu_pwm_setup', fields: { PIN: m[2], FREQ: m[3] } };
+        if ((m = line.match(/pwm_(\d+)\.setDuty\((\d+)\)/)))
+            return { type: 'mcu_pwm_duty', fields: { PIN: m[1], DUTY: m[2] } };
+        if ((m = line.match(/let\s+servo_(\d+)\s*=\s*hardware\.Servo\((\d+)\)/)))
+            return { type: 'mcu_servo_setup', fields: { PIN: m[2] } };
+        if ((m = line.match(/servo_(\d+)\.writeAngle\((\d+)\)/)))
+            return { type: 'mcu_servo_move', fields: { PIN: m[1], ANGLE: m[2] } };
+        return null;
+    }
+
+    function parseJSToBlocks(code) {
+        const blocks = [];
+        const lines = code.split('\n');
+        let i = 0;
+        while (i < lines.length) {
+            const trimmed = lines[i].trim();
+            if (!trimmed || trimmed.startsWith('//') || trimmed === '}') { i++; continue; }
+
+            // Detect while (true) {
+            if (trimmed.match(/^while\s*\(\s*true\s*\)\s*\{?/)) {
+                const children = [];
+                i++;
+                while (i < lines.length) {
+                    const ct = lines[i].trim();
+                    if (ct === '}') { i++; break; }
+                    if (ct) {
+                        const cb = parseJSLine(ct);
+                        if (cb) children.push(cb);
+                    }
+                    i++;
+                }
+                blocks.push({
+                    type: 'controls_whileUntil',
+                    fields: { MODE: 'WHILE' },
+                    values: { BOOL: { type: 'logic_boolean', fields: { BOOL: 'TRUE' } } },
+                    children: children
+                });
+                continue;
+            }
+
+            const block = parseJSLine(trimmed);
+            if (block) blocks.push(block);
+            i++;
+        }
+        return blocks;
+    }
+
+    function parseCppLine(line) {
+        let m;
+        if ((m = line.match(/pinMode\((\d+),\s*(OUTPUT|INPUT|INPUT_PULLUP)\)/))) {
+            const modeMap = { 'OUTPUT': 'Pin.OUT', 'INPUT': 'Pin.IN', 'INPUT_PULLUP': 'Pin.IN, Pin.PULL_UP' };
+            return { type: 'mcu_pin_setup', fields: { PIN: m[1], MODE: modeMap[m[2]] || m[2] } };
+        }
+        if ((m = line.match(/digitalWrite\((\d+),\s*(HIGH|LOW)\)/)))
+            return { type: 'mcu_pin_write', fields: { PIN: m[1], VAL: m[2] === 'HIGH' ? '1' : '0' } };
+        if ((m = line.match(/delay\((\d+)\)/)))
+            return { type: 'mcu_sleep', fields: { SECONDS: String(parseInt(m[1]) / 1000) } };
+        if (line.includes('pwm.begin()'))
+            return { type: 'pca9685_init', fields: { I2C_ID: '0', SDA: '21', SCL: '22', FREQ: '50' } };
+        if ((m = line.match(/pwm\.setPWM\((\d+),/)))
+            return { type: 'pca9685_set_servo', fields: {} };
+        return null;
+    }
+
+    function parseCppToBlocks(code) {
+        const blocks = [];
+        const lines = code.split('\n');
+        let i = 0;
+        // In C++ the loop body is in void loop() { ... }
+        let inLoop = false;
+        let loopChildren = [];
+
+        while (i < lines.length) {
+            const trimmed = lines[i].trim();
+            if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('#include') || trimmed === '{' || trimmed === '}') {
+                if (trimmed === '}' && inLoop) {
+                    // End of while block
+                    blocks.push({
+                        type: 'controls_whileUntil',
+                        fields: { MODE: 'WHILE' },
+                        values: { BOOL: { type: 'logic_boolean', fields: { BOOL: 'TRUE' } } },
+                        children: loopChildren
+                    });
+                    inLoop = false;
+                    loopChildren = [];
+                }
+                i++; continue;
+            }
+            if (trimmed.startsWith('void ') || trimmed.startsWith('Adafruit_')) { i++; continue; }
+
+            // Detect while (true/1) {
+            if (trimmed.match(/^while\s*\(\s*(true|1)\s*\)\s*\{?/)) {
+                inLoop = true;
+                loopChildren = [];
+                i++;
+                continue;
+            }
+
+            const block = parseCppLine(trimmed);
+            if (block) {
+                if (inLoop) {
+                    loopChildren.push(block);
+                } else {
+                    blocks.push(block);
+                }
+            }
+            i++;
+        }
+        return blocks;
+    }
 
     // -- Dropdown Logic --
     const menuFile = document.getElementById('menu-file');
@@ -605,6 +1108,16 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Escuta desconexão física do dispositivo (unplug)
+    if ('serial' in navigator) {
+        navigator.serial.addEventListener('disconnect', (event) => {
+            if (isConnected && port && event.target === port) {
+                addLog("> ⚠ Dispositivo removido fisicamente.", "warning");
+                disconnectSerial();
+            }
+        });
+    }
+
     async function disconnectSerial() {
         isConnected = false;
         updateSerialLed(false);
@@ -647,7 +1160,8 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (error) {
             if (error.name !== 'TypeError' && isConnected) {
                 console.error("Read error:", error);
-                addLog("> Erro de leitura: " + error.message, "error");
+                addLog("> ⚠ Conexão perdida: " + error.message, "error");
+                disconnectSerial(); // Força reset se houver erro crítico
             }
         } finally {
             try { reader.releaseLock(); } catch (e) {}
@@ -735,22 +1249,165 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // -- File Manager Logic --
+    const fileModal = document.getElementById('file-modal');
+    const btnOpenFiles = document.getElementById('btn-open-files');
+    const btnRefreshFiles = document.getElementById('btn-refresh-files');
+    const btnInstallPCA = document.getElementById('btn-install-pca');
+    const fileListBody = document.getElementById('file-list-body');
+
+    const PCA9685_LIB_CODE = `
+import machine
+import time
+
+class PCA9685:
+    def __init__(self, i2c, address=0x40):
+        self.i2c = i2c
+        self.address = address
+        self.reset()
+    def reset(self):
+        self.i2c.writeto_mem(self.address, 0x00, b'\\x00')
+    def freq(self, freq):
+        prescale = int(25000000.0 / 4096.0 / freq + 0.5) - 1
+        old_mode = self.i2c.readfrom_mem(self.address, 0x00, 1)[0]
+        new_mode = (old_mode & 0x7F) | 0x10
+        self.i2c.writeto_mem(self.address, 0x00, bytes([new_mode]))
+        self.i2c.writeto_mem(self.address, 0xFE, bytes([prescale]))
+        self.i2c.writeto_mem(self.address, 0x00, bytes([old_mode]))
+        time.sleep_us(500)
+        self.i2c.writeto_mem(self.address, 0x00, bytes([old_mode | 0xa1]))
+    def pwm(self, index, on, off):
+        self.i2c.writeto_mem(self.address, 0x06 + 4 * index, bytes([on & 0xFF, on >> 8, off & 0xFF, off >> 8]))
+    def servo(self, index, angle):
+        off = int(150 + (angle / 180.0) * 450)
+        self.pwm(index, 0, off)
+`;
+
+    btnOpenFiles.addEventListener('click', () => {
+        if (!isConnected) {
+            alert("Conecte a placa primeiro!");
+            return;
+        }
+        fileModal.classList.remove('hidden');
+        refreshFileList();
+    });
+
+    document.getElementById('btn-close-file-modal').addEventListener('click', () => {
+        fileModal.classList.add('hidden');
+    });
+
+    btnRefreshFiles.addEventListener('click', refreshFileList);
+
+    async function refreshFileList() {
+        if (!isConnected) return;
+        fileListBody.innerHTML = '<tr><td colspan="2" style="text-align: center;">Lendo arquivos...</td></tr>';
+        
+        try {
+            // Interrompe e entra no modo Raw
+            await writeSerial('\x03\x01'); 
+            await new Promise(r => setTimeout(r, 200));
+            
+            // Comando para listar arquivos
+            await writeSerial("import os; print(os.listdir())\x04");
+            
+            // Aqui simplificamos a captura: em uma IDE real, usaríamos um buffer dedicado
+            addLog("> Solicitando lista de arquivos...", "system");
+            
+            // Aguarda um pouco para a resposta chegar no terminal
+            setTimeout(() => {
+                const logs = termOutput.innerText;
+                const lines = logs.split('\n');
+                // Procura por algo que pareça uma lista ['a', 'b']
+                let fileLine = lines.reverse().find(l => l.includes('[') && l.includes(']'));
+                
+                if (fileLine) {
+                    try {
+                        const files = JSON.parse(fileLine.replace(/'/g, '"'));
+                        renderFileList(files);
+                    } catch (e) {
+                        fileListBody.innerHTML = '<tr><td colspan="2">Erro ao processar lista. Tente atualizar.</td></tr>';
+                    }
+                }
+                writeSerial('\x02'); // Volta ao modo normal
+            }, 1000);
+
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    function renderFileList(files) {
+        fileListBody.innerHTML = '';
+        if (files.length === 0) {
+            fileListBody.innerHTML = '<tr><td colspan="2" style="text-align: center;">Nenhum arquivo encontrado.</td></tr>';
+            return;
+        }
+        files.forEach(file => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><i class="fa-regular fa-file-code"></i> ${file}</td>
+                <td style="text-align: center;">
+                    <button class="btn-delete-file" onclick="deleteFileOnBoard('${file}')" title="Deletar">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
+            `;
+            fileListBody.appendChild(tr);
+        });
+    }
+
+    window.deleteFileOnBoard = async (filename) => {
+        if (!confirm(`Tem certeza que deseja deletar "${filename}"?`)) return;
+        addLog(`> Deletando ${filename}...`, "warning");
+        await writeSerial('\x03\x01');
+        await new Promise(r => setTimeout(r, 200));
+        await writeSerial(`import os; os.remove('${filename}')\x04`);
+        await new Promise(r => setTimeout(r, 500));
+        await writeSerial('\x02');
+        refreshFileList();
+    };
+
+    btnInstallPCA.addEventListener('click', async () => {
+        addLog("> Instalando biblioteca PCA9685.py...", "system");
+        btnInstallPCA.disabled = true;
+        btnInstallPCA.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Instalando...';
+        
+        try {
+            await writeSerial('\x03\x01');
+            await new Promise(r => setTimeout(r, 300));
+            
+            const lines = PCA9685_LIB_CODE.split('\n');
+            await writeSerial("f = open('pca9685.py', 'w')\n");
+            
+            for (let line of lines) {
+                if (line.trim() === "") continue;
+                // Escapa aspas para não quebrar o comando print/write
+                const safeLine = line.replace(/'/g, "\\'");
+                await writeSerial(`f.write('${safeLine}\\n')\n`);
+                await new Promise(r => setTimeout(r, 20));
+            }
+            
+            await writeSerial("f.close()\x04");
+            await new Promise(r => setTimeout(r, 500));
+            await writeSerial('\x02');
+            
+            addLog("> ✅ PCA9685.py instalada com sucesso!", "success");
+            alert("Biblioteca PCA9685.py instalada na placa!");
+            refreshFileList();
+        } catch (e) {
+            addLog("> Erro ao instalar biblioteca.", "error");
+        } finally {
+            btnInstallPCA.disabled = false;
+            btnInstallPCA.innerHTML = '<i class="fa-solid fa-rocket"></i> Instalar PCA9685.py';
+        }
+    });
+
     // Theme Toggle Logic
     const themeBtn = document.getElementById('theme-toggle');
     const themeIcon = themeBtn.querySelector('i');
-    const prismLink = document.getElementById('prism-theme');
-
-    const updatePrismTheme = (theme) => {
-        if (theme === 'light') {
-            prismLink.href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css";
-        } else {
-            prismLink.href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css";
-        }
-    };
 
     if (savedTheme === 'light') {
         themeIcon.classList.replace('fa-sun', 'fa-moon');
-        updatePrismTheme('light');
     }
 
     themeBtn.addEventListener('click', () => {
@@ -759,14 +1416,14 @@ document.addEventListener("DOMContentLoaded", function () {
             document.documentElement.setAttribute('data-theme', 'light');
             localStorage.setItem('theme', 'light');
             workspace.setTheme(themeZelosLight);
+            cmEditor.setOption('theme', 'default');
             themeIcon.classList.replace('fa-sun', 'fa-moon');
-            updatePrismTheme('light');
         } else {
             document.documentElement.setAttribute('data-theme', 'dark');
             localStorage.setItem('theme', 'dark');
             workspace.setTheme(themeZelosDark);
+            cmEditor.setOption('theme', 'material-darker');
             themeIcon.classList.replace('fa-moon', 'fa-sun');
-            updatePrismTheme('dark');
         }
     });
 });

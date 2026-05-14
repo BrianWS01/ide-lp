@@ -8,8 +8,10 @@
     <!-- Modern font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
-    <!-- Prism Syntax Highlighting (One Dark / Tomorrow Theme) -->
-    <link id="prism-theme" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <!-- CodeMirror 5 Editor -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/default.min.css">
 
     <!-- FontAwesome for modern icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -23,10 +25,11 @@
     <script src="https://unpkg.com/blockly/python_compressed.js"></script>
     <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
 
-    <!-- Prism.js Scripts para Parser Python e JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <!-- CodeMirror 5 Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
 </head>
 
 <body>
@@ -45,7 +48,8 @@
             <!-- Input oculto para carregar arquivo -->
             <input type="file" id="file-input" accept=".mcublocks" style="display: none;">
             <span><i class="fa-solid fa-pen-to-square"></i> Edit</span>
-            <span><i class="fa-solid fa-circuit-board"></i> Board</span>
+            <span><i class="fa-solid fa-microchip"></i> Board</span>
+            <span id="btn-open-files"><i class="fa-solid fa-folder-tree"></i> Explorer</span>
             <span id="action-connect"><span class="serial-led" id="serial-led"></span><i class="fa-brands fa-usb"></i> Connect USB</span>
         </div>
         <div class="controls">
@@ -79,10 +83,13 @@
                     </div>
 
                     <button class="btn btn-secondary btn-copy" id="btn-copy">
-                        <i class="fa-regular fa-copy"></i> Copy Code
+                        <i class="fa-regular fa-copy"></i> Copy
+                    </button>
+                    <button class="btn btn-primary btn-sync" id="btn-sync">
+                        <i class="fa-solid fa-arrows-rotate"></i> Sincronizar
                     </button>
                 </div>
-                <pre><code id="pythonCode" class="language-python"># Arraste os blocos para iniciar...</code></pre>
+                <div id="code-editor"></div>
             </div>
 
             <!-- Terminal Output Panel -->
@@ -100,16 +107,16 @@
 
     <!-- Toolbox XML (Hidden) -->
     <xml id="toolbox" style="display: none">
-        <category name="Eventos" colour="#FFD500" css-icon="icon-event">
+        <category name="Eventos" colour="#F6B316" css-icon="icon-event">
             <block type="event_when_started"></block>
         </category>
-        <category name="Lógica" colour="#5CB1D6" css-icon="icon-logic">
+        <category name="Lógica" colour="#5b80a5" css-icon="icon-logic">
             <block type="controls_if"></block>
             <block type="logic_compare"></block>
             <block type="logic_operation"></block>
             <block type="logic_boolean"></block>
         </category>
-        <category name="Controle" colour="#FFAB19" css-icon="icon-loop">
+        <category name="Controle" colour="#5ba55b" css-icon="icon-control">
             <block type="controls_repeat_ext">
                 <value name="TIMES">
                     <shadow type="math_number">
@@ -119,36 +126,58 @@
             </block>
             <block type="controls_whileUntil"></block>
         </category>
-        <category name="Operadores" colour="#59C059" css-icon="icon-math">
+        <category name="Operadores" colour="#5b67a5" css-icon="icon-math">
             <block type="math_number">
                 <field name="NUM">0</field>
             </block>
             <block type="math_arithmetic"></block>
         </category>
-        <category name="Texto" colour="#9966FF" css-icon="icon-text">
+        <category name="Texto" colour="#5ba58c" css-icon="icon-text">
             <block type="text"></block>
             <block type="text_print"></block>
         </category>
 
-        <category name="Variáveis" colour="#FF8C1A" custom="VARIABLE" css-icon="icon-motor"></category>
-        <category name="Meus Blocos" colour="#FF6680" custom="PROCEDURE" css-icon="icon-proc"></category>
+        <category name="Variáveis" colour="#a55b80" custom="VARIABLE" css-icon="icon-var"></category>
+        <category name="Meus Blocos" colour="#995ba5" custom="PROCEDURE" css-icon="icon-myblocks"></category>
         <sep></sep>
 
-        <category name="Pinos" colour="#4CBFE6" css-icon="icon-pin">
+        <category name="Pinos" colour="#8e44ad" css-icon="icon-pin">
             <block type="mcu_pin_setup"></block>
             <block type="mcu_pin_write"></block>
             <block type="mcu_pin_read"></block>
         </category>
-        <category name="PWM" colour="#0FBD8C" css-icon="icon-pwm">
+        <category name="PWM" colour="#3498db" css-icon="icon-pwm">
             <block type="mcu_pwm_setup"></block>
             <block type="mcu_pwm_duty"></block>
         </category>
-        <category name="Motores" colour="#FF6680" css-icon="icon-proc">
+        <category name="Motores" colour="#e74c3c" css-icon="icon-motor">
             <block type="mcu_servo_setup"></block>
             <block type="mcu_servo_move"></block>
         </category>
-        <category name="Tempo" colour="#FFAB19" css-icon="icon-loop">
+        <category name="Tempo" colour="#e67e22" css-icon="icon-time">
             <block type="mcu_sleep"></block>
+        </category>
+        <sep></sep>
+        <category name="PCA9685" colour="#E91E63" css-icon="icon-pca">
+            <block type="pca9685_init"></block>
+            <block type="pca9685_set_servo">
+                <value name="CHANNEL">
+                    <shadow type="math_number">
+                        <field name="NUM">0</field>
+                    </shadow>
+                </value>
+                <value name="ANGLE">
+                    <shadow type="math_number">
+                        <field name="NUM">90</field>
+                    </shadow>
+                </value>
+            </block>
+        </category>
+        <category name="Braço Robótico" colour="#673AB7" css-icon="icon-arm">
+            <block type="robot_arm_move"></block>
+        </category>
+        <category name="Robô Dançarino" colour="#FF5722" css-icon="icon-dance">
+            <block type="robot_dance_preset"></block>
         </category>
     </xml>
 
@@ -171,6 +200,36 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary close-modal">Cancelar</button>
                 <button class="btn btn-primary" id="btn-connect-serial"><i class="fa-solid fa-plug"></i> Conectar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Manager Modal -->
+    <div id="file-modal" class="modal-overlay hidden">
+        <div class="modal-content file-manager-modal">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-folder-tree"></i> Gerenciador de Arquivos</h2>
+                <button class="btn-icon close-modal" id="btn-close-file-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="file-actions-top">
+                    <button class="btn btn-secondary" id="btn-refresh-files"><i class="fa-solid fa-sync"></i> Atualizar Lista</button>
+                    <button class="btn btn-primary" id="btn-install-pca"><i class="fa-solid fa-rocket"></i> Instalar PCA9685.py</button>
+                </div>
+                <div class="file-list-container">
+                    <table class="file-table">
+                        <thead>
+                            <tr>
+                                <th>Nome do Arquivo</th>
+                                <th style="width: 50px;">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="file-list-body">
+                            <!-- Files will be injected here -->
+                            <tr><td colspan="2" style="text-align: center; padding: 20px;">Conecte a placa para ver os arquivos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
