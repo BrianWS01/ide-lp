@@ -1,5 +1,5 @@
 {
-  "name": "Mini Makers Robotics IDE",
+  "name": "Mini Makers IDE",
   "short_name": "MiniMakers IDE",
   "description": "IDE de Robótica Educacional com Google Blockly e MicroPython",
   "start_url": "./ide.html",

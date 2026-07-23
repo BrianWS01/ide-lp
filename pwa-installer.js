@@ -8,7 +8,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
       .then((reg) => {
-        console.log('[PWA] Service Worker registrado com sucesso no escopo:', reg.scope);
+        console.log('[PWA] Service Worker registrado no escopo:', reg.scope);
       })
       .catch((err) => {
         console.error('[PWA] Falha ao registrar Service Worker:', err);
@@ -16,53 +16,68 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// 2. Gerenciamento do Botão de Instalação (beforeinstallprompt)
 let deferredPrompt = null;
 
-window.addEventListener('DOMContentLoaded', () => {
-  const installBtn = document.getElementById('btn-install-pwa');
+// Redirecionamento automático se aberto em modo Standalone (App) fora da IDE
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+if (isStandalone && !window.location.pathname.endsWith('ide.html')) {
+  window.location.href = './ide.html';
+}
 
-  // Verificar se já está rodando como aplicativo instalado (Standalone)
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-  if (isStandalone && installBtn) {
-    installBtn.style.display = 'none';
-  }
+window.addEventListener('DOMContentLoaded', () => {
+  const installButtons = document.querySelectorAll('.btn-install-pwa');
 
   // Capturar evento de instalação do navegador
   window.addEventListener('beforeinstallprompt', (e) => {
-    // Previne o banner padrão do navegador
     e.preventDefault();
     deferredPrompt = e;
+    console.log('[PWA] Evento beforeinstallprompt capturado!');
 
-    // Exibir o botão de instalação na interface
-    if (installBtn && !isStandalone) {
-      installBtn.style.display = 'inline-flex';
+    // Mostrar botões de instalação se não estiver em modo standalone
+    if (!isStandalone) {
+      installButtons.forEach((btn) => {
+        if (btn.tagName === 'BUTTON') {
+          btn.style.display = 'inline-flex';
+        }
+      });
     }
   });
 
-  // Ação ao clicar no botão de instalação
-  if (installBtn) {
-    installBtn.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
+  // Configurar clique em todos os botões de instalação
+  installButtons.forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
 
-      // Exibe o prompt nativo de instalação
-      deferredPrompt.prompt();
-      
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`[PWA] Escolha do usuário para instalação: ${outcome}`);
+      if (deferredPrompt) {
+        // Dispara o prompt nativo de instalação da PWA
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`[PWA] Escolha do usuário: ${outcome}`);
+        deferredPrompt = null;
 
-      // Limpa a referência e esconde o botão
-      deferredPrompt = null;
-      installBtn.style.display = 'none';
+        // Se o usuário instalou, redireciona para a IDE
+        if (outcome === 'accepted') {
+          window.location.href = './ide.html';
+        }
+      } else {
+        // Se a PWA já estiver instalada ou o navegador não suportar o prompt, abre a IDE direto
+        window.location.href = './ide.html';
+      }
     });
-  }
+  });
 
-  // Esconder botão quando o app for instalado com sucesso
+  // Esconder botões após instalação concluída
   window.addEventListener('appinstalled', () => {
     console.log('[PWA] Aplicativo instalado com sucesso!');
     deferredPrompt = null;
-    if (installBtn) {
-      installBtn.style.display = 'none';
+    installButtons.forEach((btn) => {
+      if (btn.tagName === 'BUTTON' && btn.id === 'btn-install-pwa') {
+        btn.style.display = 'none';
+      }
+    });
+    // Redirecionar para a IDE se o usuário ainda estiver na landing page
+    if (!window.location.pathname.endsWith('ide.html')) {
+      window.location.href = './ide.html';
     }
   });
 });
