@@ -781,7 +781,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const brandCard = document.createElement('div');
         brandCard.className = 'toolbox-brand-card';
         brandCard.innerHTML = `
-            <img class="toolbox-brand-logo" src="https://brianws01.github.io/LP-ROBOTICA/img/logo.png" alt="Mini Makers Logo">
+            <img class="toolbox-brand-logo" src="logo.svg" alt="Mini Makers Logo">
             <div class="toolbox-brand-info">
                 <div class="toolbox-brand-title">Mini Makers IDE</div>
                 <div class="toolbox-brand-version">Versão 1.0.0</div>
@@ -930,10 +930,62 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     updateCode();
 
-    const startBlock = workspace.newBlock('event_when_started');
-    startBlock.initSvg();
-    startBlock.render();
-    startBlock.moveBy(50, 50);
+    function loadInitialProgram() {
+        workspace.clear();
+        const startBlk = workspace.newBlock('event_when_started');
+        startBlk.initSvg();
+        startBlk.render();
+        startBlk.moveBy(60, 40);
+
+        const pinSetupBlk = workspace.newBlock('mcu_pin_setup');
+        pinSetupBlk.setFieldValue('2', 'PIN');
+        pinSetupBlk.setFieldValue('Pin.OUT', 'MODE');
+        pinSetupBlk.initSvg();
+        pinSetupBlk.render();
+        startBlk.nextConnection.connect(pinSetupBlk.previousConnection);
+
+        const whileBlk = workspace.newBlock('controls_whileUntil');
+        whileBlk.setFieldValue('WHILE', 'MODE');
+        whileBlk.initSvg();
+        whileBlk.render();
+        pinSetupBlk.nextConnection.connect(whileBlk.previousConnection);
+
+        const boolBlk = workspace.newBlock('logic_boolean');
+        boolBlk.setFieldValue('TRUE', 'BOOL');
+        boolBlk.initSvg();
+        boolBlk.render();
+        whileBlk.getInput('BOOL').connection.connect(boolBlk.outputConnection);
+
+        const pinHighBlk = workspace.newBlock('mcu_pin_write');
+        pinHighBlk.setFieldValue('2', 'PIN');
+        pinHighBlk.setFieldValue('1', 'VAL');
+        pinHighBlk.initSvg();
+        pinHighBlk.render();
+        whileBlk.getInput('DO').connection.connect(pinHighBlk.previousConnection);
+
+        const sleep1Blk = workspace.newBlock('mcu_sleep');
+        sleep1Blk.setFieldValue('5', 'SECONDS');
+        sleep1Blk.initSvg();
+        sleep1Blk.render();
+        pinHighBlk.nextConnection.connect(sleep1Blk.previousConnection);
+
+        const pinLowBlk = workspace.newBlock('mcu_pin_write');
+        pinLowBlk.setFieldValue('2', 'PIN');
+        pinLowBlk.setFieldValue('0', 'VAL');
+        pinLowBlk.initSvg();
+        pinLowBlk.render();
+        sleep1Blk.nextConnection.connect(pinLowBlk.previousConnection);
+
+        const sleep2Blk = workspace.newBlock('mcu_sleep');
+        sleep2Blk.setFieldValue('5', 'SECONDS');
+        sleep2Blk.initSvg();
+        sleep2Blk.render();
+        pinLowBlk.nextConnection.connect(sleep2Blk.previousConnection);
+
+        updateCode();
+    }
+
+    loadInitialProgram();
 
     window.addEventListener('resize', function () {
         Blockly.svgResize(workspace);

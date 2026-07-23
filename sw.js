@@ -1,4 +1,4 @@
-const CACHE_NAME = 'minimakers-pwa-v2';
+const CACHE_NAME = 'minimakers-pwa-v5';
 
 const STATIC_ASSETS = [
   './',
@@ -52,46 +52,51 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Estratégia Cache-First com Network Fallback e Cache Dinâmico
+// Estratégia de busca do Service Worker: Network-First para HTML, Cache-First para estáticos
 self.addEventListener('fetch', (event) => {
-  // Apenas responder a requisições GET
   if (event.request.method !== 'GET') return;
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Retorna a resposta do cache imediatamente
-        // E em segundo plano atualiza se necessário
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse);
-            });
+  const isHtml = event.request.headers.get('accept')?.includes('text/html');
+
+  if (isHtml) {
+    // Para navegação HTML: Network First com fallback para cache
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
           }
-        }).catch(() => {
-          // Ignora erros de rede quando offline
-        });
-        return cachedResponse;
-      }
-
-      // Se não estiver no cache, busca na rede e guarda no cache dinâmico
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200) {
           return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) return cachedResponse;
+            return caches.match('./ide.html').then((ideRes) => ideRes || caches.match('./index.html'));
+          });
+        })
+    );
+  } else {
+    // Para ativos estáticos (CSS, JS, Imagens): Cache First com atualização em background
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          fetch(event.request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+            }
+          }).catch(() => {});
+          return cachedResponse;
         }
 
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
         });
-
-        return networkResponse;
-      }).catch(() => {
-        // Se a requisição de página HTML falhar offline, tenta servir ide.html ou index.html
-        if (event.request.headers.get('accept')?.includes('text/html')) {
-          return caches.match('./ide.html') || caches.match('./index.html');
-        }
-      });
-    })
-  );
+      })
+    );
+  }
 });

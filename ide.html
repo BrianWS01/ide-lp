@@ -26,7 +26,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=5">
 
     <!-- Blockly Core and Python Generator from CDN -->
     <script src="https://unpkg.com/blockly/blockly.min.js"></script>
@@ -44,33 +44,42 @@
 
 <body>
     <header class="navbar">
-        <a href="index.html" class="logo" style="text-decoration: none; cursor: pointer;"><i class="fa-solid fa-microchip" style="color: var(--primary);"></i> MCU Blocks IDE</a>
+        <a href="index.html" class="logo" style="text-decoration: none; cursor: pointer; display: flex; align-items: center; gap: 10px;">
+            <img src="logo.svg" alt="Mini Makers Logo" height="34" style="filter: drop-shadow(0 0 8px rgba(24, 255, 255, 0.4));">
+            <span class="logo-title" style="font-weight: 700; font-size: 16px; color: #fff;">MCU Blocks IDE</span>
+        </a>
         <div class="menu">
             <div class="dropdown">
-                <span id="menu-file"><i class="fa-solid fa-file"></i> File <i class="fa-solid fa-chevron-down fa-xs"></i></span>
+                <span id="menu-file"><i class="fa-solid fa-folder-closed"></i> Arquivo <i class="fa-solid fa-chevron-down fa-xs"></i></span>
                 <div class="dropdown-content">
-                    <a href="#" id="action-save"><i class="fa-solid fa-download"></i> Save Project</a>
-                    <a href="#" id="action-open"><i class="fa-solid fa-folder-open"></i> Open Project</a>
+                    <a href="#" id="action-save"><i class="fa-solid fa-download"></i> Salvar Projeto</a>
+                    <a href="#" id="action-open"><i class="fa-solid fa-folder-open"></i> Abrir Projeto</a>
                     <hr style="margin: 4px 0; border: 0; border-top: 1px solid var(--border);">
-                    <a href="#" id="action-export-py"><i class="fa-brands fa-python"></i> Export Python</a>
+                    <a href="#" id="action-export-py"><i class="fa-brands fa-python"></i> Exportar Python</a>
                 </div>
             </div>
             <!-- Input oculto para carregar arquivo -->
             <input type="file" id="file-input" accept=".mcublocks" style="display: none;">
-            <span><i class="fa-solid fa-pen-to-square"></i> Edit</span>
-            <span><i class="fa-solid fa-microchip"></i> Board</span>
+            <span><i class="fa-solid fa-pen-to-square"></i> Editar</span>
+            <span><i class="fa-solid fa-gear"></i> Board</span>
             <span id="btn-open-files"><i class="fa-solid fa-folder-tree"></i> Explorer</span>
-            <span id="action-connect"><span class="serial-led" id="serial-led"></span><i class="fa-brands fa-usb"></i> Connect USB</span>
+            <div class="connection-badge-group" id="action-connect" title="Clique para Conectar/Desconectar">
+                <span class="badge-connected"><span class="serial-led connected" id="serial-led"></span> Conectado</span>
+                <span class="badge-port" id="port-label">COM3</span>
+            </div>
         </div>
         <div class="controls">
-            <button class="btn btn-secondary btn-install-pwa" id="btn-install-pwa" title="Instalar Aplicativo" style="display: none; align-items: center; gap: 6px; padding: 6px 12px; margin-right: 4px; background: rgba(24, 255, 255, 0.1); border: 1px solid rgba(24, 255, 255, 0.4); color: #18FFFF; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s ease;">
-                <i class="fa-solid fa-download"></i> Instalar Aplicativo
+            <button class="btn btn-icon" id="btn-settings" title="Configurações">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+            <button class="btn btn-secondary btn-install-pwa" id="btn-install-pwa" title="Instalar Aplicativo" style="display: none;">
+                <i class="fa-solid fa-download"></i> Instalar
             </button>
             <button class="btn btn-icon" id="theme-toggle" title="Alternar Tema">
                 <i class="fa-solid fa-sun"></i>
             </button>
             <button class="btn btn-primary btn-upload" id="btn-upload">
-                <i class="fa-solid fa-cloud-arrow-up"></i> Upload to MCU
+                <i class="fa-solid fa-rocket"></i> Upload to MCU
             </button>
         </div>
     </header>
@@ -121,7 +130,9 @@
             <div class="terminal-panel">
                 <div class="terminal-header">
                     <h3><i class="fa-solid fa-terminal"></i> Serial Output</h3>
-                    <button class="btn-icon" id="btn-clear-term" title="Clear Terminal"><i class="fa-solid fa-eraser"></i></button>
+                    <button class="btn-clear-term" id="btn-clear-term" title="Limpar Terminal">
+                        <i class="fa-solid fa-trash-can"></i> Limpar
+                    </button>
                 </div>
                 <div class="terminal-content" id="terminal-output">
                     <div class="log system">IDE Iniciada... Aguardando conexão.</div>
@@ -135,13 +146,13 @@
         <category name="Eventos" colour="#F6B316" css-icon="icon-event">
             <block type="event_when_started"></block>
         </category>
-        <category name="Lógica" colour="#5b80a5" css-icon="icon-logic">
+        <category name="Lógica" colour="#2196F3" css-icon="icon-logic">
             <block type="controls_if"></block>
             <block type="logic_compare"></block>
             <block type="logic_operation"></block>
             <block type="logic_boolean"></block>
         </category>
-        <category name="Controle" colour="#5ba55b" css-icon="icon-control">
+        <category name="Controle" colour="#00E676" css-icon="icon-control">
             <block type="controls_repeat_ext">
                 <value name="TIMES">
                     <shadow type="math_number">
@@ -150,61 +161,47 @@
                 </value>
             </block>
             <block type="controls_whileUntil"></block>
+            <block type="mcu_sleep"></block>
         </category>
-        <category name="Operadores" colour="#5b67a5" css-icon="icon-math">
+        <category name="Operadores" colour="#9C27B0" css-icon="icon-math">
             <block type="math_number">
                 <field name="NUM">0</field>
             </block>
             <block type="math_arithmetic"></block>
         </category>
-        <category name="Texto" colour="#5ba58c" css-icon="icon-text">
+        <category name="Texto" colour="#00BCD4" css-icon="icon-text">
             <block type="text"></block>
             <block type="text_print"></block>
         </category>
 
-        <category name="Variáveis" colour="#a55b80" custom="VARIABLE" css-icon="icon-var"></category>
-        <category name="Meus Blocos" colour="#995ba5" custom="PROCEDURE" css-icon="icon-myblocks"></category>
+        <category name="Variáveis" colour="#E91E63" custom="VARIABLE" css-icon="icon-var"></category>
+        <category name="Meus Blocos" colour="#673AB7" custom="PROCEDURE" css-icon="icon-myblocks"></category>
         <sep></sep>
 
-        <category name="Pinos" colour="#8e44ad" css-icon="icon-pin">
+        <category name="Pinos" colour="#9C27B0" css-icon="icon-pin">
             <block type="mcu_pin_setup"></block>
             <block type="mcu_pin_write"></block>
             <block type="mcu_pin_read"></block>
         </category>
-        <category name="PWM" colour="#3498db" css-icon="icon-pwm">
+        <category name="PWM" colour="#2196F3" css-icon="icon-pwm">
             <block type="mcu_pwm_setup"></block>
             <block type="mcu_pwm_duty"></block>
         </category>
-        <category name="Motores" colour="#e74c3c" css-icon="icon-motor">
+        <category name="Motores" colour="#F44336" css-icon="icon-motor">
             <block type="mcu_servo_setup"></block>
             <block type="mcu_servo_move"></block>
             <block type="l298n_setup"></block>
             <block type="l298n_motor"></block>
             <block type="l298n_robot"></block>
         </category>
-        <category name="Tempo" colour="#e67e22" css-icon="icon-time">
+        <category name="Sensores" colour="#FF9800" css-icon="icon-sensor">
+            <block type="mcu_pin_read"></block>
             <block type="mcu_sleep"></block>
         </category>
-        <sep></sep>
-        <category name="PCA9685" colour="#E91E63" css-icon="icon-pca">
+        <category name="Comunicação" colour="#00BCD4" css-icon="icon-comm">
             <block type="pca9685_init"></block>
-            <block type="pca9685_set_servo">
-                <value name="CHANNEL">
-                    <shadow type="math_number">
-                        <field name="NUM">0</field>
-                    </shadow>
-                </value>
-                <value name="ANGLE">
-                    <shadow type="math_number">
-                        <field name="NUM">90</field>
-                    </shadow>
-                </value>
-            </block>
-        </category>
-        <category name="Braço Robótico" colour="#673AB7" css-icon="icon-arm">
+            <block type="pca9685_set_servo"></block>
             <block type="robot_arm_move"></block>
-        </category>
-        <category name="Robô Dançarino" colour="#FF5722" css-icon="icon-dance">
             <block type="robot_dance_preset"></block>
         </category>
     </xml>
