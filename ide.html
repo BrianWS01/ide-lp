@@ -16,6 +16,16 @@
     <!-- FontAwesome for modern icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- PWA & Mobile SEO Meta Tags -->
+    <meta name="theme-color" content="#0b1020">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MiniMakers IDE">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+
     <link rel="stylesheet" href="style.css?v=3">
 
     <!-- Blockly Core and Python Generator from CDN -->
@@ -53,6 +63,9 @@
             <span id="action-connect"><span class="serial-led" id="serial-led"></span><i class="fa-brands fa-usb"></i> Connect USB</span>
         </div>
         <div class="controls">
+            <button class="btn btn-secondary btn-install-pwa" id="btn-install-pwa" title="Instalar Aplicativo" style="display: none; align-items: center; gap: 6px; padding: 6px 12px; margin-right: 4px; background: rgba(24, 255, 255, 0.1); border: 1px solid rgba(24, 255, 255, 0.4); color: #18FFFF; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s ease;">
+                <i class="fa-solid fa-download"></i> Instalar Aplicativo
+            </button>
             <button class="btn btn-icon" id="theme-toggle" title="Alternar Tema">
                 <i class="fa-solid fa-sun"></i>
             </button>
@@ -250,6 +263,7 @@
     </div>
 
     <script src="main.js?v=3"></script>
+    <script src="pwa-installer.js"></script>
 </body>
 
 </html>

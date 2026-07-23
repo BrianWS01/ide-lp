@@ -1,0 +1,25 @@
+{
+  "name": "Mini Makers Robotics IDE",
+  "short_name": "MiniMakers IDE",
+  "description": "IDE de Robótica Educacional com Google Blockly e MicroPython",
+  "start_url": "./ide.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
